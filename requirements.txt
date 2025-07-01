@@ -1,4 +1,4 @@
 streamlit
 pandas
-tabula-py
+pdfplumber
 openai
