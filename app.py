@@ -6,7 +6,7 @@ from datetime import datetime
 import openai
 
 # Configuration: set your OpenAI API key as an environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("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")
 
 # -------------------------
 # VAT & Tax Rules (South Africa)
