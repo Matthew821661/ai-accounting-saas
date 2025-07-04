@@ -1,11 +1,8 @@
-# AI Accounting SaaS — Fixed Version
+# AI Accounting SaaS
 
-This Streamlit app uses pdfplumber and the OpenAI v1 SDK. It handles South African VAT.
-
-## Setup
-
-```
+**Setup:**
+```bash
 pip install -r requirements.txt
-export OPENAI_API_KEY="sk-..."
+export OPENAI_API_KEY="your-key-here"
 streamlit run app.py
 ```

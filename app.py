@@ -5,17 +5,19 @@ import os
 from datetime import datetime
 from openai import OpenAI
 
-# Configuration
-openai_api_key = os.getenv("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")
-client = OpenAI(api_key=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)
+# Load API key from environment variable
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    st.error("Please set the OPENAI_API_KEY environment variable.")
+    st.stop()
+
+client = OpenAI(api_key=api_key)
 VAT_RATE = 0.15
 
-def calculate_vat(amount):
-    """Return VAT portion of a VAT-inclusive amount."""
+def calculate_vat(amount: float) -> float:
     return round(amount * VAT_RATE / (1 + VAT_RATE), 2)
 
 def parse_bank_statement(uploaded_file) -> pd.DataFrame:
-    """Read a PDF or Excel bank statement to a DataFrame with Date, Description, Amount."""
     tmp_path = f"/tmp/{uploaded_file.name}"
     with open(tmp_path, "wb") as f:
         f.write(uploaded_file.read())
@@ -36,7 +38,7 @@ def parse_bank_statement(uploaded_file) -> pd.DataFrame:
                         dt = datetime.strptime(date_str, "%d/%m/%Y")
                     except:
                         continue
-                    desc = row[2].strip() if len(row) > 2 and row[2] else ""
+                    desc = row[2] if len(row) > 2 else ""
                     def to_num(x):
                         if not x:
                             return 0.0
@@ -49,32 +51,24 @@ def parse_bank_statement(uploaded_file) -> pd.DataFrame:
     else:
         df = pd.read_excel(tmp_path)
 
-    df = df.rename(columns=lambda c: c.strip())
-    if len(df.columns) < 3:
-        raise ValueError("Uploaded file must have Date, Description, Amount")
+    df.rename(columns=lambda c: c.strip(), inplace=True)
+    if df.shape[1] < 3:
+        raise ValueError("Statement must have Date, Description, Amount columns.")
     df.columns = ["Date", "Description", "Amount"] + list(df.columns[3:])
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
-    df = df[["Date", "Description", "Amount"]]
-    return df
+    return df[["Date", "Description", "Amount"]]
 
 def classify_transactions(df: pd.DataFrame) -> pd.DataFrame:
-    """Classify transactions into GL accounts using OpenAI."""
     gl_accounts = []
-    for _, row in df.iterrows():
-        prompt = (
-            f"Date: {row['Date'].date()}, "
-            f"Description: {row['Description']}, "
-            f"Amount: {row['Amount']}. "
-            "Classify into a single GL account."
-        )
+    for _, r in df.iterrows():
+        prompt = f"Date: {r['Date'].date()}, Description: {r['Description']}, Amount: {r['Amount']}. Classify into a single GL account."
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role":"user","content":prompt}],
             temperature=0.0,
             max_tokens=32,
         )
-        acct = resp.choices[0].message.content.strip()
-        gl_accounts.append(acct)
+        gl_accounts.append(resp.choices[0].message.content.strip())
     df["GL Account"] = gl_accounts
     return df
 
@@ -83,29 +77,24 @@ class Ledger:
         self.entries = []
     def post(self, date, account, debit=0.0, credit=0.0, narrative=""):
         self.entries.append({
-            "Date": date,
-            "Account": account,
-            "Debit": debit,
-            "Credit": credit,
-            "Narrative": narrative
+            "Date": date, "Account": account,
+            "Debit": debit, "Credit": credit, "Narrative": narrative
         })
     def to_dataframe(self):
         return pd.DataFrame(self.entries)
 
-def generate_trial_balance(ledger: Ledger) -> pd.DataFrame:
-    """Generate a trial balance from a Ledger."""
+def trial_balance(ledger: Ledger) -> pd.DataFrame:
     df = ledger.to_dataframe()
-    tb = df.groupby("Account").agg({"Debit": "sum", "Credit": "sum"}).reset_index()
+    tb = df.groupby("Account").agg({"Debit":"sum","Credit":"sum"}).reset_index()
     tb["Balance"] = tb["Debit"] - tb["Credit"]
     return tb
 
 def main():
-    st.title("AI Accounting SaaS — Fixed")
+    st.title("AI Accounting SaaS")
 
     st.sidebar.header("Upload Bank Statement")
-    uploaded = st.sidebar.file_uploader("PDF or Excel", type=["pdf", "xls", "xlsx"])
+    uploaded = st.sidebar.file_uploader("PDF or Excel", type=["pdf","xls","xlsx"])
     if not uploaded:
-        st.info("Upload a PDF/Excel bank statement to begin.")
         return
 
     try:
@@ -113,7 +102,7 @@ def main():
         st.subheader("Parsed Transactions")
         st.dataframe(df)
     except Exception as e:
-        st.error(f"Error parsing statement: {e}")
+        st.error(f"Parsing error: {e}")
         return
 
     if st.button("Classify via AI"):
@@ -134,24 +123,23 @@ def main():
         st.dataframe(ledger.to_dataframe())
 
         st.markdown("---")
-        st.subheader("Manual / Adjusting Entries")
-        with st.form("adjustments"):
+        st.subheader("Adjusting Entries")
+        with st.form("adj"):
             d = st.date_input("Date", datetime.today())
             acct = st.text_input("Account")
             db = st.number_input("Debit", min_value=0.0)
             cr = st.number_input("Credit", min_value=0.0)
             nat = st.text_input("Narrative")
-            if st.form_submit_button("Post Entry"):
+            if st.form_submit_button("Post"):
                 ledger.post(d, acct, debit=db, credit=cr, narrative=nat)
                 st.success("Posted!")
 
-        tb = generate_trial_balance(ledger)
-        st.markdown("---")
+        tb = trial_balance(ledger)
         st.subheader("Trial Balance")
         st.dataframe(tb)
 
-        sales = tb[tb["Account"].str.contains("Sales|Revenue", case=False)]["Balance"].sum()
-        purchases = tb[tb["Account"].str.contains("Expenses|Purchases", case=False)]["Balance"].sum()
+        sales = tb[tb["Account"].str.contains("Sales|Revenue",case=False)]["Balance"].sum()
+        purchases = tb[tb["Account"].str.contains("Expenses|Purchases",case=False)]["Balance"].sum()
         vat_out = calculate_vat(sales)
         vat_in = calculate_vat(purchases)
         st.markdown(f"**VAT on Outputs:** ZAR {vat_out}")
