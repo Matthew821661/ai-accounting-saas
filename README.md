@@ -1,22 +1,11 @@
-# AI Accounting SaaS — pdfplumber + OpenAI V1
+# AI Accounting SaaS — Fixed Version
 
-**An AI-driven bookkeeping prototype** built with Streamlit & OpenAI’s latest SDK (v1), using pdfplumber for PDF parsing—no Java required.
+This Streamlit app uses pdfplumber and the OpenAI v1 SDK. It handles South African VAT.
 
 ## Setup
 
-```bash
+```
 pip install -r requirements.txt
 export OPENAI_API_KEY="sk-..."
 streamlit run app.py
 ```
-
-## Features
-
-- Upload bank statements (PDF via pdfplumber & Excel)
-- GPT-powered GL account classification using OpenAI v1 SDK
-- Manual & adjusting journal entries
-- Trial balance & VAT summary (15% SA VAT)
-
-## License
-
-MIT

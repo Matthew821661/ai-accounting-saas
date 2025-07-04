@@ -5,28 +5,17 @@ import os
 from datetime import datetime
 from openai import OpenAI
 
-# —————————————
 # Configuration
-# —————————————
-openai_api_key = os.getenv("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")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
-VAT_RATE = 0.15  # 15% standard VAT
+VAT_RATE = 0.15
 
-# —————————————
-# Helper Functions
-# —————————————
-def calculate_vat(amount: float) -> float:
+def calculate_vat(amount):
     """Return VAT portion of a VAT-inclusive amount."""
     return round(amount * VAT_RATE / (1 + VAT_RATE), 2)
 
-# —————————————
-# Bank Statement Parsing
-# —————————————
 def parse_bank_statement(uploaded_file) -> pd.DataFrame:
-    """
-    Read a PDF or Excel bank statement and normalize to columns:
-    Date, Description, Amount
-    """
+    """Read a PDF or Excel bank statement to a DataFrame with Date, Description, Amount."""
     tmp_path = f"/tmp/{uploaded_file.name}"
     with open(tmp_path, "wb") as f:
         f.write(uploaded_file.read())
@@ -49,8 +38,9 @@ def parse_bank_statement(uploaded_file) -> pd.DataFrame:
                         continue
                     desc = row[2].strip() if len(row) > 2 and row[2] else ""
                     def to_num(x):
-                        if not x: return 0.0
-                        return float(x.replace(" ","").replace(",",""").replace("R",""").replace("ZAR","""))
+                        if not x:
+                            return 0.0
+                        return float(x.replace(" ", "").replace(",", "").replace("R", "").replace("ZAR", ""))
                     money_in = to_num(row[3]) if len(row) > 3 else 0.0
                     money_out = to_num(row[4]) if len(row) > 4 else 0.0
                     amt = money_in - money_out
@@ -60,25 +50,26 @@ def parse_bank_statement(uploaded_file) -> pd.DataFrame:
         df = pd.read_excel(tmp_path)
 
     df = df.rename(columns=lambda c: c.strip())
-    if len(df.columns) >= 3:
-        df = df.rename(columns={df.columns[0]: "Date", df.columns[1]: "Description", df.columns[2]: "Amount"})
+    if len(df.columns) < 3:
+        raise ValueError("Uploaded file must have Date, Description, Amount")
+    df.columns = ["Date", "Description", "Amount"] + list(df.columns[3:])
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
     df = df[["Date", "Description", "Amount"]]
     return df
 
-# —————————————
-# AI Classification
-# —————————————
 def classify_transactions(df: pd.DataFrame) -> pd.DataFrame:
+    """Classify transactions into GL accounts using OpenAI."""
     gl_accounts = []
-    for _, r in df.iterrows():
+    for _, row in df.iterrows():
         prompt = (
-            f"Date: {r['Date'].date()}, Description: {r['Description']}, Amount: {r['Amount']}."
-            " Classify into a single GL account."
+            f"Date: {row['Date'].date()}, "
+            f"Description: {row['Description']}, "
+            f"Amount: {row['Amount']}. "
+            "Classify into a single GL account."
         )
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role":"user","content":prompt}],
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=32,
         )
@@ -87,9 +78,6 @@ def classify_transactions(df: pd.DataFrame) -> pd.DataFrame:
     df["GL Account"] = gl_accounts
     return df
 
-# —————————————
-# Ledger & Trial Balance
-# —————————————
 class Ledger:
     def __init__(self):
         self.entries = []
@@ -105,26 +93,28 @@ class Ledger:
         return pd.DataFrame(self.entries)
 
 def generate_trial_balance(ledger: Ledger) -> pd.DataFrame:
+    """Generate a trial balance from a Ledger."""
     df = ledger.to_dataframe()
-    tb = df.groupby("Account").agg({"Debit":"sum","Credit":"sum"}).reset_index()
+    tb = df.groupby("Account").agg({"Debit": "sum", "Credit": "sum"}).reset_index()
     tb["Balance"] = tb["Debit"] - tb["Credit"]
     return tb
 
-# —————————————
-# Streamlit App
-# —————————————
 def main():
-    st.title("AI Accounting SaaS — pdfplumber + OpenAI V1")
+    st.title("AI Accounting SaaS — Fixed")
 
     st.sidebar.header("Upload Bank Statement")
-    uploaded = st.sidebar.file_uploader("PDF or Excel", type=["pdf","xls","xlsx"])
+    uploaded = st.sidebar.file_uploader("PDF or Excel", type=["pdf", "xls", "xlsx"])
     if not uploaded:
         st.info("Upload a PDF/Excel bank statement to begin.")
         return
 
-    df = parse_bank_statement(uploaded)
-    st.subheader("Parsed Transactions")
-    st.dataframe(df)
+    try:
+        df = parse_bank_statement(uploaded)
+        st.subheader("Parsed Transactions")
+        st.dataframe(df)
+    except Exception as e:
+        st.error(f"Error parsing statement: {e}")
+        return
 
     if st.button("Classify via AI"):
         with st.spinner("Classifying..."):
@@ -132,7 +122,6 @@ def main():
         st.subheader("Classified Transactions")
         st.dataframe(df)
 
-        # Auto-post to ledger
         ledger = Ledger()
         for _, r in df.iterrows():
             amt = r["Amount"]
@@ -140,6 +129,7 @@ def main():
                 ledger.post(r["Date"], r["GL Account"], debit=amt, narrative=r["Description"])
             else:
                 ledger.post(r["Date"], r["GL Account"], credit=-amt, narrative=r["Description"])
+
         st.subheader("General Ledger")
         st.dataframe(ledger.to_dataframe())
 
@@ -168,5 +158,5 @@ def main():
         st.markdown(f"**VAT on Inputs:** ZAR {vat_in}")
         st.markdown(f"**Net VAT Due:** ZAR {vat_out - vat_in}")
 
-if __name__ == """__main__""":
+if __name__ == "__main__":
     main()
