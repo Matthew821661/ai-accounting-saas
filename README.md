@@ -1,6 +1,6 @@
-# AI Accounting SaaS
+# AI Accounting SaaS — pdfplumber Edition
 
-**An AI-driven bookkeeping prototype** built with Streamlit & OpenAI.
+**An AI-driven bookkeeping prototype** built with Streamlit & OpenAI, using pdfplumber for PDF parsing—no Java required.
 
 ## Setup
 
@@ -12,7 +12,7 @@ streamlit run app.py
 
 ## Features
 
-- Upload bank statements (PDF & Excel)
+- Upload bank statements (PDF via pdfplumber & Excel)
 - GPT-powered GL account classification
 - Manual & adjusting journal entries
 - Trial balance & VAT summary (15% SA VAT)

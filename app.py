@@ -39,7 +39,7 @@ def parse_bank_statement(uploaded_file) -> pd.DataFrame:
                     continue
                 headers = table[0]
                 for row in table[1:]:
-                    # skip if header repeats
+                    # skip repeated header rows
                     if row == headers:
                         continue
                     date_str = row[0].strip()
@@ -56,17 +56,11 @@ def parse_bank_statement(uploaded_file) -> pd.DataFrame:
                     amt = money_in - money_out
                     records.append({"Date": dt, "Description": desc, "Amount": amt})
         df = pd.DataFrame(records)
-
     else:
         df = pd.read_excel(tmp_path)
 
-    # Standardize column names & types
     df = df.rename(columns=lambda c: c.strip())
-    df = df.rename(columns={
-        df.columns[0]: "Date",
-        df.columns[1]: "Description",
-        df.columns[2]: "Amount"
-    })
+    df = df.rename(columns={df.columns[0]: "Date", df.columns[1]: "Description", df.columns[2]: "Amount"})
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
     df = df[["Date", "Description", "Amount"]]
     return df
@@ -78,10 +72,7 @@ def classify_transactions(df: pd.DataFrame) -> pd.DataFrame:
     prompts = []
     for _, r in df.iterrows():
         prompts.append(
-            f"Date: {r['Date'].date()}, "
-            f"Description: {r['Description']}, "
-            f"Amount: {r['Amount']}. "
-            "Classify into a single GL account."
+            f"Date: {r['Date'].date()}, Description: {r['Description']}, Amount: {r['Amount']}. Classify into a single GL account."
         )
     gl_accounts = []
     for p in prompts:
@@ -135,7 +126,6 @@ def main():
         st.subheader("Classified Transactions")
         st.dataframe(df)
 
-        # Auto-post to ledger
         ledger = Ledger()
         for _, r in df.iterrows():
             amt = r["Amount"]
@@ -143,7 +133,6 @@ def main():
                 ledger.post(r["Date"], r["GL Account"], debit=amt, narrative=r["Description"])
             else:
                 ledger.post(r["Date"], r["GL Account"], credit=-amt, narrative=r["Description"])
-
         st.subheader("General Ledger")
         st.dataframe(ledger.to_dataframe())
 
@@ -164,7 +153,6 @@ def main():
         st.subheader("Trial Balance")
         st.dataframe(tb)
 
-        # VAT summary
         sales     = tb[tb["Account"].str.contains("Sales|Revenue",case=False)]["Balance"].sum()
         purchases = tb[tb["Account"].str.contains("Expenses|Purchases",case=False)]["Balance"].sum()
         vat_out   = calculate_vat(sales)
