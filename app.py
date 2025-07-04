@@ -168,5 +168,5 @@ def main():
         st.markdown(f"**VAT on Inputs:** ZAR {vat_in}")
         st.markdown(f"**Net VAT Due:** ZAR {vat_out - vat_in}")
 
-if __name__ == "__main__":
+if __name__ == """__main__""":
     main()
