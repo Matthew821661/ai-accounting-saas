@@ -1,1 +1,1 @@
-# Sample content placeholder
+# Trial balance placeholder

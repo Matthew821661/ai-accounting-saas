@@ -1,1 +1,1 @@
-# Sample content placeholder
+# Full app content placeholder

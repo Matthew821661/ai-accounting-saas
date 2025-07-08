@@ -1,1 +1,1 @@
-# Sample content placeholder
+# Supabase client placeholder

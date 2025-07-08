@@ -1,1 +1,1 @@
-# Sample content placeholder
+# VAT logic placeholder
