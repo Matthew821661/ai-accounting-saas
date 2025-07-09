@@ -1,5 +1,11 @@
 import streamlit as st
 import pandas as pd
+import sys
+import os
+
+# ✅ Fix import path to reach utils folder
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from utils.classifier import classify_transaction
 from utils.vat_engine import calculate_vat
 from utils.trial_balance import generate_trial_balance
