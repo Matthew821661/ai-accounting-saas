@@ -1,1 +1,0 @@
-# VAT logic placeholder
