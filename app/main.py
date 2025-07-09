@@ -1,1 +1,0 @@
-# Full app content placeholder
