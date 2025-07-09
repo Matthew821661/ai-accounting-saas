@@ -11,7 +11,7 @@ from utils.vat_engine import calculate_vat
 from utils.trial_balance import generate_trial_balance
 from utils.reconciliation import match_invoices_to_bank
 
-st.set_page_config(page_title="AI Bookkeeping SaaS", layout="wide")
+st.set_page_config(page_title="Matthew Bookkeeping", layout="wide")
 st.title("📊 AI Bookkeeping SaaS")
 
 user = {"email": "demo@user.com"}
