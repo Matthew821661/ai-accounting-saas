@@ -12,7 +12,7 @@ from utils.trial_balance import generate_trial_balance
 from utils.reconciliation import match_invoices_to_bank
 
 st.set_page_config(page_title="Matthew Bookkeeping", layout="wide")
-st.title("📊 Mikhael is weak in chess")
+st.title("📊 Mattrade's bookkeeping")
 
 user = {"email": "demo@user.com"}
 st.success(f"✅ Logged in as: {user['email']}")
