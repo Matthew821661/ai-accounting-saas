@@ -25,7 +25,7 @@ if menu == "Bank Upload":
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
         df['GL Account'] = df['Description'].apply(classify_transaction)
-        df['Amount'] = df['Debit'].fillna(0) - df['Credit'].fillna(0)
+        df['Amount'] = df["Debit"].fillna(0) - df["Credit"].fillna(0)
         df[['VAT Amount', 'VAT Type']] = df.apply(
             lambda row: pd.Series(calculate_vat(row['Amount'], "standard" if row['GL Account'].startswith("6") else "zero")),
             axis=1
